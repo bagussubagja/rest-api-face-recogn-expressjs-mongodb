@@ -1,0 +1,14 @@
+{
+  "name": "rest-api-face-recogn-expressjs-mongodb",
+  "version": "1.0.0",
+  "description": "REST API for Face Recognition with Express JS and MongoDB",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Bagus Subagja",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
