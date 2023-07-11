@@ -99,7 +99,7 @@ async function getDescriptorsFromDB(image) {
   }
 
   // Muat pencocokan wajah untuk menemukan wajah yang cocok ditambah berapa banyak batas nilai bobot yang diperkenankan
-  const faceMatcher = new faceapi.FaceMatcher(faces, 0.5);
+  const faceMatcher = new faceapi.FaceMatcher(faces, 0.6);
 
   // Baca gambar menggunakan canvas
   const img = await canvas.loadImage(image);
