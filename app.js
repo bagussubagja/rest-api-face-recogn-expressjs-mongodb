@@ -14,7 +14,8 @@ app.use(
     useTempFiles: true,
   })
 );
-
+/*
+  Branch = detectAllFace-recognizer
 /*
 Load Models
 1. Memuat model dari faceRecognitionNet yang bertugas untuk pengenalan dan identifikasi wajah pada gambar yang diberikan
