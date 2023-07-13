@@ -144,13 +144,25 @@ app.post("/recognizing-face", async (req, res) => {
   }
 });
 
+// Fungsi untuk mnengecek apakah dalam sebuah foto terdapat wajah atau tidak?
+async function detectFaces(imagePath) {
+  const img = await canvas.loadImage(imagePath);
+  const detections = await faceapi.detectAllFaces(img);
+  return detections.length > 0;
+}
+
 /*
 Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaftar pada database
 */
 app.post("/recognizer-face", async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
-  let result = await getDescriptorsFromDB(File1);
-  res.json({ result });
+  const isFace = await detectFaces(File1);
+  if (isFace) {
+    let result = await getDescriptorsFromDB(File1);
+    res.json({ result });
+  } else {
+    res.json({ message: "No face detected in the input image." });
+  }
 });
 
 /*
