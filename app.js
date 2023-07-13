@@ -16,6 +16,8 @@ app.use(
 );
 
 /*
+  Branch = single-face-recognizer
+/*
 Load Models
 1. Memuat model dari faceRecognitionNet yang bertugas untuk pengenalan dan identifikasi wajah pada gambar yang diberikan
 2. Memuat model dari faceLandmark68Net yang mampu mendeteksi 68 landmark atau titik kunci pada wajah seperti hidung, mata, mulut, dan lainnya.
@@ -80,51 +82,13 @@ async function uploadLabeledImages(images, label) {
 }
 
 /*
-Fungsi getDescriptorsFromDB() berguna untuk mengecek wajah apakah sudah dikenali oleh sistem
+Fungsi getDescriptorFromDB() berguna untuk mengecek wajah apakah sudah dikenali oleh sistem
 */
-// async function getDescriptorsFromDB(image) {
-//   // Dapatkan semua data wajah dari mongodb dan melakukan looping terhadap masing-masing untuk membaca data
-//   let faces = await FaceModel.find();
-//   for (i = 0; i < faces.length; i++) {
-//     // Ubah deskriptor data wajah dari Objects ke tipe Float32Array
-//     for (j = 0; j < faces[i].descriptions.length; j++) {
-//       faces[i].descriptions[j] = new Float32Array(
-//         Object.values(faces[i].descriptions[j])
-//       );
-//     }
-//     faces[i] = new faceapi.LabeledFaceDescriptors(
-//       faces[i].label,
-//       faces[i].descriptions
-//     );
-//   }
-
-//   // Muat pencocokan wajah untuk menemukan wajah yang cocok ditambah berapa banyak batas nilai bobot yang diperkenankan
-//   const faceMatcher = new faceapi.FaceMatcher(faces, 0.6);
-
-//   // Baca gambar menggunakan canvas
-//   const img = await canvas.loadImage(image);
-//   let temp = faceapi.createCanvasFromMedia(img);
-//   // Memproses gambar untuk model yang tersedia
-//   const displaySize = { width: img.width, height: img.height };
-//   faceapi.matchDimensions(temp, displaySize);
-
-//   // Mencari wajah yang cocok
-//   const detections = await faceapi
-//     .detectAllFaces(img)
-//     .withFaceLandmarks()
-//     .withFaceDescriptors();
-//   const resizedDetections = faceapi.resizeResults(detections, displaySize);
-//   const results = resizedDetections.map((d) =>
-//     faceMatcher.findBestMatch(d.descriptor)
-//   );
-//   return results;
-// }
-
 async function getDescriptorFromDB(image) {
-  // Get all face data from MongoDB and loop through each face to read the data
+  // Dapatkan semua data wajah dari MongoDB dan lewati setiap wajah untuk membaca data
   let faces = await FaceModel.find();
 
-  // Create LabeledFaceDescriptors objects from the Float32Arrays
+  // Buat objek LabeledFaceDescriptors dari Float32Arrays
   const labeledFaceDescriptors = faces.map((face) => {
     const descriptors = face.descriptions.map((desc) => {
       return new Float32Array(Object.values(desc));
@@ -132,23 +96,23 @@ async function getDescriptorFromDB(image) {
     return new faceapi.LabeledFaceDescriptors(face.label, descriptors);
   });
 
-  // Load face matching to find matching faces with an allowed weight threshold
+  // Muat pencocokan wajah untuk menemukan wajah yang cocok dengan ambang batas berat yang diizinkan
   const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
 
-  // Read the image using canvas
+  // Baca gambar menggunakan kanvas
   const img = await canvas.loadImage(image);
   const displaySize = { width: img.width, height: img.height };
 
-  // Detect a single face in the image
+  // Mendeteksi satu wajah dalam gambar
   const detections = await faceapi
     .detectSingleFace(img)
     .withFaceLandmarks()
     .withFaceDescriptor();
 
-  // Resize the detected face
+  // Mengubah ukuran wajah yang terdeteksi
   const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-  // Find the best match for the detected face
+  // Temukan kecocokan terbaik untuk wajah yang terdeteksi
   const result = faceMatcher.findBestMatch(resizedDetections.descriptor);
 
   return result;
@@ -191,15 +155,8 @@ Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaf
 */
 app.post("/recognizer-face", async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
-  const isFace = await detectFaces(File1);
   let result = await getDescriptorFromDB(File1);
   res.json({ result });
-  // if (isFace) {
-  //   let result = await getDescriptorFromDB(File1);
-  //   res.json({ result });
-  // } else {
-  //   res.json({ message: "No face detected in the input image." });
-  // }
 });
 
 /*
