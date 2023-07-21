@@ -64,7 +64,13 @@ async function uploadLabeledImages(images, label) {
         .detectSingleFace(img)
         .withFaceLandmarks()
         .withFaceDescriptor();
-      descriptions.push(detections.descriptor);
+
+      if (detections) {
+        descriptions.push(detections.descriptor);
+      } else {
+        console.log("Terdapat model wajah yang tidak terdeteksi.");
+        return { error: "Terdapat model wajah yang tidak terdeteksi." };
+      }
     }
 
     // Menyimpan data wajah di MongoDB
@@ -73,10 +79,10 @@ async function uploadLabeledImages(images, label) {
       descriptions: descriptions,
     });
     await createFace.save();
-    return true;
+    return { success: true };
   } catch (error) {
     console.log(error);
-    return error;
+    return { error: "Something went wrong while processing the images." };
   }
 }
 
@@ -136,8 +142,13 @@ app.post("/recognizing-face", async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
   const File2 = req.files.File2.tempFilePath;
   const File3 = req.files.File3.tempFilePath;
+  const File4 = req.files.File4.tempFilePath;
+  const File5 = req.files.File5.tempFilePath;
   const label = req.body.label;
-  let result = await uploadLabeledImages([File1, File2, File3], label);
+  let result = await uploadLabeledImages(
+    [File1, File2, File3, File4, File5],
+    label
+  );
   if (result) {
     res.json({ message: "Face data stored successfully" });
   } else {
@@ -155,16 +166,33 @@ async function detectFaces(imagePath) {
 /*
 Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaftar pada database
 */
+
 app.post("/recognizer-face", async (req, res) => {
+  const { label } = req.body;
+
+  if (label === undefined) {
+    return res.status(400).json({ message: "Harap tambahkan parameter nama." });
+  }
+
   const File1 = req.files.File1.tempFilePath;
   const isFace = await detectFaces(File1);
+
   if (isFace) {
     let result = await getDescriptorsFromDB(File1);
-    res.json({ result });
+
+    const filteredResult = result.filter((entry) => entry._label === label);
+
+    if (filteredResult.length > 0) {
+      return res.json({ result: filteredResult });
+    } else {
+      return res.status(404).json({ message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.` });
+    }
   } else {
-    res.json({ message: "No face detected in the input image." });
+    return res.json({ message: "Terdapat error dalam sistem pengenalan wajah." });
   }
 });
+
+
 
 /*
 Konfigurasi MongoDB
