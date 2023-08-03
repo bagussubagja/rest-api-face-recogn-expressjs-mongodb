@@ -69,7 +69,7 @@ async function uploadLabeledImages(images, label) {
         descriptions.push(detections.descriptor);
       } else {
         console.log("Terdapat model wajah yang tidak terdeteksi.");
-        return { error: "Terdapat model wajah yang tidak terdeteksi." };
+        throw new Error("Terdapat model wajah yang tidak terdeteksi.");
       }
     }
 
@@ -79,10 +79,10 @@ async function uploadLabeledImages(images, label) {
       descriptions: descriptions,
     });
     await createFace.save();
-    return { success: true };
+    return true;
   } catch (error) {
     console.log(error);
-    return { error: "Something went wrong while processing the images." };
+    throw error;
   }
 }
 
@@ -114,7 +114,6 @@ async function getDescriptorsFromDB(image) {
   // Memproses gambar untuk model yang tersedia
   const displaySize = { width: img.width, height: img.height };
   faceapi.matchDimensions(temp, displaySize);
-
   // Mencari wajah yang cocok
   const detections = await faceapi
     .detectAllFaces(img)
@@ -138,6 +137,7 @@ app.get("/", (_, res) => {
 /*
 Endpoint untuk mendaftarkan wajah kedalam database
 */
+
 app.post("/recognizing-face", async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
   const File2 = req.files.File2.tempFilePath;
@@ -145,16 +145,15 @@ app.post("/recognizing-face", async (req, res) => {
   const File4 = req.files.File4.tempFilePath;
   const File5 = req.files.File5.tempFilePath;
   const label = req.body.label;
-  let result = await uploadLabeledImages(
-    [File1, File2, File3, File4, File5],
-    label
-  );
-  if (result) {
+
+  try {
+    await uploadLabeledImages([File1, File2, File3, File4, File5], label);
     res.json({ message: "Face data stored successfully" });
-  } else {
-    res.json({ message: "Something went wrong, please try again." });
+  } catch (error) {
+    res.status(400).json({ error: "Face not detected in one or more images." });
   }
 });
+
 
 // Fungsi untuk mnengecek apakah dalam sebuah foto terdapat wajah atau tidak?
 async function detectFaces(imagePath) {
