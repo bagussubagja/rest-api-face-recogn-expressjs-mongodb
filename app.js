@@ -50,6 +50,7 @@ const FaceModel = mongoose.model("Face", faceSchema);
 /*
 Fungsi uploadLabeledImages() berguna untuk mengupload gambar yang akan diregistrasikan
 */
+
 async function uploadLabeledImages(images, label) {
   try {
     let counter = 0;
@@ -59,14 +60,58 @@ async function uploadLabeledImages(images, label) {
       const img = await canvas.loadImage(images[i]);
       counter = (i / images.length) * 100;
       console.log(`Progress = ${counter}%`);
-      // Baca setiap wajah dan simpan deskripsi wajah di array deskripsi
-      const detections = await faceapi
-        .detectSingleFace(img)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
 
-      if (detections) {
-        descriptions.push(detections.descriptor);
+      // Detect all faces in the image
+      const detections = await faceapi
+        .detectAllFaces(img)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+
+      if (detections.length > 0) {
+        // Get the first detected face landmarks and face descriptor
+        const faceLandmarks = detections[0].landmarks;
+        const faceDescriptor = detections[0].descriptor;
+
+        // Calculate the center of the left and right eyes
+        const leftEye = faceLandmarks.getLeftEye();
+        const rightEye = faceLandmarks.getRightEye();
+        const eyesCenter = {
+          x: (leftEye.x + rightEye.x) / 2,
+          y: (leftEye.y + rightEye.y) / 2,
+        };
+
+        // Calculate the angle of rotation based on the slope of the line connecting the eyes
+        const dx = rightEye.x - leftEye.x;
+        const dy = rightEye.y - leftEye.y;
+        const angle = Math.atan2(dy, dx);
+
+        // Use the canvas library to perform the rotation and alignment
+        const alignedFaceCanvas = canvas.createCanvas(img.width, img.height);
+        const context = alignedFaceCanvas.getContext("2d");
+        context.translate(eyesCenter.x, eyesCenter.y);
+        context.rotate(angle);
+        context.drawImage(img, -eyesCenter.x, -eyesCenter.y);
+
+        // Crop the aligned face to a square region around the center
+        const cropSize = Math.min(128, Math.min(img.width, img.height));
+        const x = eyesCenter.x - cropSize / 2;
+        const y = eyesCenter.y - cropSize / 2;
+        const alignedFaceImage = canvas.createCanvas(128, 128);
+        const alignedContext = alignedFaceImage.getContext("2d");
+        alignedContext.drawImage(
+          alignedFaceCanvas,
+          x < 0 ? -x : 0,
+          y < 0 ? -y : 0,
+          cropSize,
+          cropSize,
+          0,
+          0,
+          128,
+          128
+        );
+
+        // Add the resized aligned face descriptor to the descriptions array
+        descriptions.push(faceDescriptor);
       } else {
         console.log("Terdapat model wajah yang tidak terdeteksi.");
         throw new Error("Terdapat model wajah yang tidak terdeteksi.");
@@ -86,45 +131,79 @@ async function uploadLabeledImages(images, label) {
   }
 }
 
+// ... (rest of the code remains unchanged)
+
 /*
 Fungsi getDescriptorsFromDB() berguna untuk mengecek wajah apakah sudah dikenali oleh sistem
 */
+
 async function getDescriptorsFromDB(image) {
-  // Dapatkan semua data wajah dari mongodb dan melakukan looping terhadap masing-masing untuk membaca data
-  let faces = await FaceModel.find();
-  for (i = 0; i < faces.length; i++) {
-    // Ubah deskriptor data wajah dari Objects ke tipe Float32Array
-    for (j = 0; j < faces[i].descriptions.length; j++) {
-      faces[i].descriptions[j] = new Float32Array(
-        Object.values(faces[i].descriptions[j])
-      );
+  try {
+    // Get all face data from MongoDB and loop through each to read the data
+    let faces = await FaceModel.find();
+    for (i = 0; i < faces.length; i++) {
+      // Convert face descriptors from Objects to Float32Array
+      for (j = 0; j < faces[i].descriptions.length; j++) {
+        faces[i].descriptions[j] = new Float32Array(Object.values(faces[i].descriptions[j]));
+      }
+      faces[i] = new faceapi.LabeledFaceDescriptors(faces[i].label, faces[i].descriptions);
     }
-    faces[i] = new faceapi.LabeledFaceDescriptors(
-      faces[i].label,
-      faces[i].descriptions
-    );
+
+    // Create face matcher to find matching faces with a certain threshold
+    const faceMatcher = new faceapi.FaceMatcher(faces, 0.6);
+
+    // Load the image using canvas
+    const img = await canvas.loadImage(image);
+    let temp = faceapi.createCanvasFromMedia(img);
+
+    // Detect all faces in the image and get their descriptors
+    const detections = await faceapi.detectAllFaces(img).withFaceLandmarks().withFaceDescriptors();
+
+    // Crop and resize the face to 128x128
+    const faceImages = detections.map((d) => {
+      const faceCanvas = faceapi.createCanvasFromMedia(img);
+      const ctx = faceCanvas.getContext("2d");
+
+      const x = Math.floor(d.detection.box.x);
+      const y = Math.floor(d.detection.box.y);
+      const width = Math.floor(d.detection.box.width);
+      const height = Math.floor(d.detection.box.height);
+
+      faceCanvas.width = 128;
+      faceCanvas.height = 128;
+
+      const scaleX = 128 / width;
+      const scaleY = 128 / height;
+
+      ctx.drawImage(
+        img,
+        x,
+        y,
+        width,
+        height,
+        0,
+        0,
+        Math.floor(width * scaleX),
+        Math.floor(height * scaleY)
+      );
+
+      return faceCanvas.toDataURL("image/jpeg", 1.0);
+    });
+
+    // Mencari wajah yang cocok
+    const resizedDetections = faceapi.resizeResults(detections, temp);
+    const results = resizedDetections.map((d, i) => ({
+      ...faceMatcher.findBestMatch(d.descriptor),
+      faceImage: faceImages[i],
+    }));
+
+    return results;
+  } catch (error) {
+    console.log(error);
+    throw error;
   }
-
-  // Muat pencocokan wajah untuk menemukan wajah yang cocok ditambah berapa banyak batas nilai bobot yang diperkenankan
-  const faceMatcher = new faceapi.FaceMatcher(faces, 0.6);
-
-  // Baca gambar menggunakan canvas
-  const img = await canvas.loadImage(image);
-  let temp = faceapi.createCanvasFromMedia(img);
-  // Memproses gambar untuk model yang tersedia
-  const displaySize = { width: img.width, height: img.height };
-  faceapi.matchDimensions(temp, displaySize);
-  // Mencari wajah yang cocok
-  const detections = await faceapi
-    .detectAllFaces(img)
-    .withFaceLandmarks()
-    .withFaceDescriptors();
-  const resizedDetections = faceapi.resizeResults(detections, displaySize);
-  const results = resizedDetections.map((d) =>
-    faceMatcher.findBestMatch(d.descriptor)
-  );
-  return results;
 }
+
 
 // Root Endpoint
 app.get("/", (_, res) => {
@@ -154,7 +233,6 @@ app.post("/recognizing-face", async (req, res) => {
   }
 });
 
-
 // Fungsi untuk mnengecek apakah dalam sebuah foto terdapat wajah atau tidak?
 async function detectFaces(imagePath) {
   const img = await canvas.loadImage(imagePath);
@@ -173,31 +251,6 @@ function calculateFaceSimilarity(descriptor1, descriptor2) {
 Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaftar pada database
 */
 
-// app.post("/recognizer-face", async (req, res) => {
-//   const { label } = req.body;
-
-//   if (label === undefined) {
-//     return res.status(400).json({ message: "Harap tambahkan parameter nama." });
-//   }
-
-//   const File1 = req.files.File1.tempFilePath;
-//   const isFace = await detectFaces(File1);
-
-//   if (isFace) {
-//     let result = await getDescriptorsFromDB(File1);
-
-//     const filteredResult = result.filter((entry) => entry._label === label);
-
-//     if (filteredResult.length > 0) {
-//       return res.json({ result: filteredResult });
-//     } else {
-//       return res.status(404).json({ message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.` });
-//     }
-//   } else {
-//     return res.json({ message: "Terdapat error dalam sistem pengenalan wajah." });
-//   }
-// });
-
 app.post("/recognizer-face", async (req, res) => {
   const { label } = req.body;
 
@@ -214,24 +267,25 @@ app.post("/recognizer-face", async (req, res) => {
     const filteredResult = result.filter((entry) => entry._label === label);
 
     if (filteredResult.length > 0) {
-      // Menghitung similarity dan mengembalikan hasil berupa similarity dan label wajah terdekat
+      // Calculate similarity and distance
       const similarityResult = filteredResult.map((entry) => ({
         label: entry._label,
-        similarity: calculateFaceSimilarity(
-          entry._distance,
-          filteredResult[0]._distance
-        ),
+        similarity: calculateFaceSimilarity(entry._distance, filteredResult[0]._distance),
+        distance: entry._distance,
       }));
 
       return res.json({ result: similarityResult });
     } else {
-      return res.status(404).json({ message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.` });
+      return res.status(404).json({
+        message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.`,
+      });
     }
   } else {
-    return res.json({ message: "Terdapat error dalam sistem pengenalan wajah." });
+    return res.json({
+      message: "Terdapat error dalam sistem pengenalan wajah.",
+    });
   }
 });
-
 
 
 /*
