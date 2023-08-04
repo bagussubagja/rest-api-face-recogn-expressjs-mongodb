@@ -162,9 +162,41 @@ async function detectFaces(imagePath) {
   return detections.length > 0;
 }
 
+function calculateFaceSimilarity(descriptor1, descriptor2) {
+  // Menghitung Euclidean distance antara dua deskriptor wajah
+  const squaredDistance = faceapi.euclideanDistance(descriptor1, descriptor2);
+  const similarity = 1 / (1 + squaredDistance);
+  return similarity;
+}
+
 /*
 Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaftar pada database
 */
+
+// app.post("/recognizer-face", async (req, res) => {
+//   const { label } = req.body;
+
+//   if (label === undefined) {
+//     return res.status(400).json({ message: "Harap tambahkan parameter nama." });
+//   }
+
+//   const File1 = req.files.File1.tempFilePath;
+//   const isFace = await detectFaces(File1);
+
+//   if (isFace) {
+//     let result = await getDescriptorsFromDB(File1);
+
+//     const filteredResult = result.filter((entry) => entry._label === label);
+
+//     if (filteredResult.length > 0) {
+//       return res.json({ result: filteredResult });
+//     } else {
+//       return res.status(404).json({ message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.` });
+//     }
+//   } else {
+//     return res.json({ message: "Terdapat error dalam sistem pengenalan wajah." });
+//   }
+// });
 
 app.post("/recognizer-face", async (req, res) => {
   const { label } = req.body;
@@ -182,7 +214,16 @@ app.post("/recognizer-face", async (req, res) => {
     const filteredResult = result.filter((entry) => entry._label === label);
 
     if (filteredResult.length > 0) {
-      return res.json({ result: filteredResult });
+      // Menghitung similarity dan mengembalikan hasil berupa similarity dan label wajah terdekat
+      const similarityResult = filteredResult.map((entry) => ({
+        label: entry._label,
+        similarity: calculateFaceSimilarity(
+          entry._distance,
+          filteredResult[0]._distance
+        ),
+      }));
+
+      return res.json({ result: similarityResult });
     } else {
       return res.status(404).json({ message: `Tidak terdapat nama '${label}' pada sistem pengenalan database.` });
     }
