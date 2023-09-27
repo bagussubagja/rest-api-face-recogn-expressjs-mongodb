@@ -6,6 +6,7 @@ const { Canvas, Image } = require("canvas");
 const canvas = require("canvas");
 const fileUpload = require("express-fileupload");
 faceapi.env.monkeyPatch({ Canvas, Image });
+var timeout = require('connect-timeout')
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(
     useTempFiles: true,
   })
 );
+app.use(timeout('1000s'))
 /*
   Branch = detectAllFace-recognizer
 /*
@@ -217,7 +219,7 @@ app.get("/", (_, res) => {
 Endpoint untuk mendaftarkan wajah kedalam database
 */
 
-app.post("/recognizing-face", async (req, res) => {
+app.post("/recognizing-face", timeout('1000s'), async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
   const File2 = req.files.File2.tempFilePath;
   const File3 = req.files.File3.tempFilePath;
@@ -251,7 +253,7 @@ function calculateFaceSimilarity(descriptor1, descriptor2) {
 Endpoint untuk mengecek wajah dengan sistem face recognition apakah sudah terdaftar pada database
 */
 
-app.post("/recognizer-face", async (req, res) => {
+app.post("/recognizer-face", timeout('1000s'), async (req, res) => {
   const { label } = req.body;
 
   if (label === undefined) {
