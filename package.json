@@ -2,7 +2,7 @@
   "name": "rest-api-face-recogn-expressjs-mongodb",
   "version": "1.0.0",
   "description": "REST API for Face Recognition with Express JS and MongoDB",
-  "main": "app.js",
+  "main": "index.js",
   "engines": {"node": "16.x"},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
