@@ -289,6 +289,53 @@ app.post("/recognizer-face", timeout('1000s'), async (req, res) => {
   }
 });
 
+// app.get("/search-face/:label", async (req, res) => {
+//   const label = req.params.label;
+
+//   try {
+//     // Cari data wajah berdasarkan label yang diberikan dengan proyeksi untuk hanya mengambil field "label"
+//     const faceData = await FaceModel.findOne({ label }, { label: 1, _id: 0 });
+
+//     if (faceData) {
+//       // Jika ditemukan, kirimkan data "label" saja dalam respons JSON
+//       res.json({ label: faceData.label });
+//     } else {
+//       // Jika tidak ditemukan, kirimkan status kode 404
+//       res.status(404).json({ message: `Data dengan label '${label}' tidak ditemukan.` });
+//     }
+//   } catch (error) {
+//     // Tangani kesalahan jika terjadi
+//     console.error(error);
+//     res.status(500).json({ error: "Terjadi kesalahan pada server." });
+//   }
+// });
+
+
+app.get("/search-face/:label", async (req, res) => {
+  const label = req.params.label;
+
+  try {
+    // Cari data wajah berdasarkan label yang diberikan dengan proyeksi untuk hanya mengambil field "label"
+    const faceData = await FaceModel.findOne({ label }, { label: 1, _id: 0 });
+
+    if (faceData) {
+      // Jika ditemukan, kirimkan respons JSON dengan status 200, is_found: true, dan pesan "Data ditemukan dalam database"
+      res.status(200).json({ label: label, is_found: true, message: "Data ditemukan dalam database" });
+    } else {
+      // Jika tidak ditemukan, kirimkan respons JSON dengan status 404, is_found: false, dan pesan "Data tidak ditemukan dalam database"
+      res.status(404).json({ label: label, is_found: false, message: "Data tidak ditemukan dalam database" });
+    }
+  } catch (error) {
+    // Tangani kesalahan jika terjadi
+    console.error(error);
+    res.status(500).json({ error: "Terjadi kesalahan pada server." });
+  }
+});
+
+
+
+
+
 
 /*
 Konfigurasi MongoDB
