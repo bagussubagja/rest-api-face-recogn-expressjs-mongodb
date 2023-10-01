@@ -221,14 +221,15 @@ Endpoint untuk mendaftarkan wajah kedalam database
 
 app.post("/recognizing-face", timeout('1000s'), async (req, res) => {
   const File1 = req.files.File1.tempFilePath;
-  const File2 = req.files.File2.tempFilePath;
-  const File3 = req.files.File3.tempFilePath;
-  const File4 = req.files.File4.tempFilePath;
-  const File5 = req.files.File5.tempFilePath;
+  // const File2 = req.files.File2.tempFilePath;
+  // const File3 = req.files.File3.tempFilePath;
+  // const File4 = req.files.File4.tempFilePath;
+  // const File5 = req.files.File5.tempFilePath;
   const label = req.body.label;
 
   try {
-    await uploadLabeledImages([File1, File2, File3, File4, File5], label);
+    // await uploadLabeledImages([File1, File2, File3, File4, File5], label);
+    await uploadLabeledImages(File1, label);
     res.json({ message: "Face data stored successfully" });
   } catch (error) {
     res.status(400).json({ error: "Face not detected in one or more images." });
