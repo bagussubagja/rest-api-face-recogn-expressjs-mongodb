@@ -229,7 +229,7 @@ app.post("/recognizing-face", timeout('1000s'), async (req, res) => {
 
   try {
     // await uploadLabeledImages([File1, File2, File3, File4, File5], label);
-    await uploadLabeledImages(File1, label);
+    await uploadLabeledImages([File1], label);
     res.json({ message: "Face data stored successfully" });
   } catch (error) {
     res.status(400).json({ error: "Face not detected in one or more images." });
