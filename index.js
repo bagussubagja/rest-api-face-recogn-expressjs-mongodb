@@ -314,7 +314,34 @@ app.get("/search-face/:label", async (req, res) => {
 });
 
 
+// Endpoint to delete data from the MongoDB by label
+app.delete("/delete-face/:label", async (req, res) => {
+  const label = req.params.label;
 
+  try {
+    // Find and delete the data with the specified label
+    const result = await FaceModel.deleteOne({ label });
+
+    if (result.deletedCount === 1) {
+      // If the data was deleted successfully
+      res.status(200).json({
+        label: label,
+        is_deleted: true,
+        message: "Data has been deleted from the database",
+      });
+    } else {
+      // If no data with the given label was found
+      res.status(404).json({
+        label: label,
+        is_deleted: false,
+        message: `Data with label '${label}' not found in the database`,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred on the server" });
+  }
+});
 
 
 /*
