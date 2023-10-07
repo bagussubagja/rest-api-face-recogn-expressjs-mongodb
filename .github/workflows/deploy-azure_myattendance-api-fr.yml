@@ -50,5 +50,5 @@ jobs:
         with:
           app-name: 'myattendance-api-fr'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_260BC29ED70E4C408BA56DDD07436D94 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F2F69A1DE597421A95415FC3E9068EA4 }}
           package: .
