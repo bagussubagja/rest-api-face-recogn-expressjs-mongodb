@@ -133,8 +133,6 @@ async function uploadLabeledImages(images, label) {
   }
 }
 
-// ... (rest of the code remains unchanged)
-
 /*
 Fungsi getDescriptorsFromDB() berguna untuk mengecek wajah apakah sudah dikenali oleh sistem
 */
@@ -210,7 +208,7 @@ async function getDescriptorsFromDB(image) {
 // Root Endpoint
 app.get("/", (_, res) => {
   res.json({
-    message: "Face Recognition with Express JS and MongoDB from Face API",
+    message: "REST API for Face Recognition MyAttendance-App 🚀🚀🚀",
     status: 200,
   });
 });
@@ -231,7 +229,7 @@ app.post("/recognizing-face", timeout('1000s'), async (req, res) => {
     await uploadLabeledImages([File1, File2, File3, File4, File5], label);
     res.json({ message: "Face data stored successfully" });
   } catch (error) {
-    res.status(400).json({ error: "Face not detected in one or more images." });
+    res.status(400).json({ error: "Terdapat data wajah yang tidak terdeteksi, harap coba kembali."});
   }
 });
 
@@ -257,7 +255,7 @@ app.post("/recognizer-face", timeout('1000s'), async (req, res) => {
   const { label } = req.body;
 
   if (label === undefined) {
-    return res.status(400).json({ message: "Harap tambahkan parameter nama." });
+    return res.status(400).json({ message: "Harap tambahkan parameter label sebagai nama." });
   }
 
   const File1 = req.files.File1.tempFilePath;
@@ -313,7 +311,34 @@ app.get("/search-face/:label", async (req, res) => {
 });
 
 
+// Endpoint to delete data from the MongoDB by label
+app.delete("/delete-face/:label", async (req, res) => {
+  const label = req.params.label;
 
+  try {
+    // Find and delete the data with the specified label
+    const result = await FaceModel.deleteOne({ label });
+
+    if (result.deletedCount === 1) {
+      // If the data was deleted successfully
+      res.status(200).json({
+        label: label,
+        is_deleted: true,
+        message: "Data wajah telah dihapuskan pada database",
+      });
+    } else {
+      // If no data with the given label was found
+      res.status(404).json({
+        label: label,
+        is_deleted: false,
+        message: `Data dengan nama '${label}' tidak ditemukan pada database`,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Terjadi Error Pada Server" });
+  }
+});
 
 
 /*
@@ -327,7 +352,7 @@ mongoose
   })
   .then(() => {
     app.listen(process.env.PORT || 5000);
-    console.log("Server is Running and MongoDB is Connected!");
+    console.log("Backend REST API FR-MyAttendance siap digunakan🚀🚀🚀");
   })
   .catch((err) => {
     console.log(err);
